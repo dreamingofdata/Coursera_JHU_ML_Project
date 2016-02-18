@@ -21,6 +21,7 @@ file.remove("pml-testing.csv")
 # Removing index and time-series columns
 import_data <- import_data[,-c(1:7)]
 
+#Useful library for data examination
 #removing columns high in missing values
 library(YaleToolkit)
 
@@ -50,23 +51,27 @@ inTrain <- createDataPartition(y=import_data$classe, p=0.75, list=FALSE)
 training <- import_data[inTrain,]
 testing <- import_data[-inTrain,]
 
-#Set parallelization and train a model
-cluster <- makeCluster(detectCores() - 1)
-registerDoParallel(cluster)
-fitControl <- trainControl(method = "cv", number = 10, allowParallel = TRUE)
-fit <- train(classe ~ ., data=training, method="rf", trControl = fitControl)
-stopCluster(cluster)
+if (file.exists("fit.RData")) {
+  load(file = "fit.RData")
+} else {
+  #Set parallelization and train a model
 
-save(fit, file="fit.RData") #for use later, rather than retraining each time
-#Save time with the below
-#load(file = "fit.RData")
+  cluster <- makeCluster(detectCores() - 1)
+  registerDoParallel(cluster)
+  fitControl <- trainControl(method = "cv", number = 10, allowParallel = TRUE)
+  fit <- train(classe ~ ., data=training, method="rf", trControl = fitControl)
+  stopCluster(cluster)
+
+  save(fit, file="fit.RData") #for use later, rather than retraining each time
+}
 
 #Test model against holdback
 predictions <- predict(fit, testing)
 cm <- confusionMatrix(predictions, testing$classe)
 print(cm)
 
-
+#Final test for Quiz
+predict(fit, final_test)
 
 # Quiz solution
 # B A B A A E D B A A B C B A E E A B B B
