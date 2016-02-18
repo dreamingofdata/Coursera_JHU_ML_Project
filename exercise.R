@@ -4,13 +4,21 @@ library(doParallel)
 
 set.seed(84738)
 
-final_test <- read.csv("pml-testing.csv", stringsAsFactors = FALSE)
+#Files were zipped to make GitHub syncronization easier
+unzip("pml-training.zip")
+unzip("pml-testing.zip")
+
 import_data <- read.csv("pml-training.csv", stringsAsFactors = FALSE)
+final_test <- read.csv("pml-testing.csv", stringsAsFactors = FALSE)
+
+file.remove("pml-training.csv")
+file.remove("pml-testing.csv")
+
 
 ################################################
 #data cleansing
 ################################################
-# Removing index and time-series columns 
+# Removing index and time-series columns
 import_data <- import_data[,-c(1:7)]
 
 #removing columns high in missing values
