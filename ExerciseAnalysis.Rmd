@@ -113,7 +113,7 @@ if (file.exists("fit.RData")) {
 
 ###Testing the model against the holdback test set
 Now to see how this model holdsup to the `testing` data that was held back.
-```{r}
+```{r message=FALSE}
 predictions <- predict(fit, testing)
 cm <- confusionMatrix(predictions, testing$classe)
 cm

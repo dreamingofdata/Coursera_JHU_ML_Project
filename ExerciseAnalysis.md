@@ -128,32 +128,6 @@ Now to see how this model holdsup to the `testing` data that was held back.
 
 ```r
 predictions <- predict(fit, testing)
-```
-
-```
-## Loading required package: randomForest
-```
-
-```
-## randomForest 4.6-12
-```
-
-```
-## Type rfNews() to see new features/changes/bug fixes.
-```
-
-```
-## 
-## Attaching package: 'randomForest'
-```
-
-```
-## The following object is masked from 'package:ggplot2':
-## 
-##     margin
-```
-
-```r
 cm <- confusionMatrix(predictions, testing$classe)
 cm
 ```

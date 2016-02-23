@@ -149,16 +149,8 @@ testing &lt;- data_cleansing[-inTrain,]</code></pre>
 <div id="testing-the-model-against-the-holdback-test-set" class="section level3">
 <h3>Testing the model against the holdback test set</h3>
 <p>Now to see how this model holdsup to the <code>testing</code> data that was held back.</p>
-<pre class="r"><code>predictions &lt;- predict(fit, testing)</code></pre>
-<pre><code>## Loading required package: randomForest</code></pre>
-<pre><code>## randomForest 4.6-12</code></pre>
-<pre><code>## Type rfNews() to see new features/changes/bug fixes.</code></pre>
-<pre><code>## 
-## Attaching package: 'randomForest'</code></pre>
-<pre><code>## The following object is masked from 'package:ggplot2':
-## 
-##     margin</code></pre>
-<pre class="r"><code>cm &lt;- confusionMatrix(predictions, testing$classe)
+<pre class="r"><code>predictions &lt;- predict(fit, testing)
+cm &lt;- confusionMatrix(predictions, testing$classe)
 cm</code></pre>
 <pre><code>## Confusion Matrix and Statistics
 ## 
