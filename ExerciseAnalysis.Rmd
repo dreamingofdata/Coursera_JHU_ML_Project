@@ -1,0 +1,128 @@
+---
+title: "Dumbbells Done Wrong"
+author: "Bill Kimler"
+date: "February 22, 2016"
+output: 
+  html_document:
+    keep_md: true
+---
+
+This analysis examines exercise techniques measured on 6 individuals using a dataset provided by the fine people at   ([Groupware@LES](http://groupware.les.inf.puc-rio.br/har)). Using various wearable sensors, a multitude of measurements (like acceleration, pitch, roll, kurtosis, etc) was gathered to help describe _how_ the subject performed the exercise. Independently, an observer classified the subject's performance as A through E, with Class A being proper technique and the other four indicating improper methods. The goal of this analysis is to see whether a model can be built based on the measurements that could accurately predict the observed classification of the subject's exercise performance.
+
+#Data Processing
+R was used as the primary tool for the data analysis. The following libraries were used:
+```{r, echo = TRUE, warning=FALSE, message=FALSE, error=FALSE, results='hide'}
+library(knitr)
+library(caret)       #For model building
+library(parallel)    #For speed
+library(doParallel)  #For even more speed
+library(YaleToolkit) #For data cleaning
+```
+
+```{r setoptions, echo=FALSE}
+opts_chunk$set(echo = TRUE)
+```
+
+###Data retrieval
+The training and test files can be found at this [GitHub repo](https://github.com/dreamingofdata/Coursera_JHU_ML_Project). Assuming these zipped files are stored locally, they are unzipped, read in, and the uncompressed files deleted.
+
+```{r results="hide"}
+unzip("pml-training.zip")
+imported_data <- read.csv("pml-training.csv", stringsAsFactors = FALSE)
+file.remove("pml-training.csv")
+```
+
+###Data cleansing
+The first seven columns (``r names(imported_data)[1:7]``) do not relate to motion measurements and were dropped.
+```{r}
+data_cleansing <- imported_data[,-c(1:7)]
+```
+
+Now, using the [YaleToolkit](https://cran.r-project.org/web/packages/YaleToolkit/index.html) library, we use the `whatis` function to help quickly determine where any missing data may be located. 
+
+```{r}
+variable_summary <- whatis(data_cleansing)
+```
+
+Given there are `r ncol(data_cleansing)` variables, we'll choose to prune any that have missing measurements in any record. This may seem like an extreme action, but it turns out in this dataset there were particular measurements for which the large majority of `r nrow(data_cleansing)` rows were `NA`. 
+
+```{r}
+variable_summary[15:20, 1:4]
+```
+
+
+```{r}
+variable_summary$index <- 1:nrow(variable_summary)
+columns_to_exclude <- variable_summary[variable_summary$missing != 0,"index"]
+
+data_cleansing <- data_cleansing[,-columns_to_exclude]
+```
+
+The previous steps went after `NA` values. The routine below performs the same pruning, but for blank ("") values.
+
+```{r}
+first_flag = TRUE
+for (x in 1:length(data_cleansing)){
+  if (sum(data_cleansing[,x]=="") != 0){
+    if (first_flag){
+      first_flag = FALSE
+      columns_to_exclude = x
+    } else {
+      columns_to_exclude <- c(columns_to_exclude, x)
+    }
+  }
+}
+data_cleansing <- data_cleansing[,-columns_to_exclude]
+```
+
+We are now left with `r ncol(data_cleansing)` variables to build a model from, all of which are guaranteed to have values (an important factor for tree-building algorithms).
+
+###Data partitioning
+Now, we'll split our imported & cleansed training data into training and test partitions for model building (75-25 split). The result column `classe` is what we're aiming for the other `r ncol(data_cleansing) - 1` columns to predict. 
+
+```{r}
+set.seed(84738)  #Setting seed to my favorite number
+inTrain <- createDataPartition(y=data_cleansing$classe, p=0.75, list=FALSE)
+training <- data_cleansing[inTrain,]
+testing <- data_cleansing[-inTrain,]
+```
+
+#Model Building - Random Forest
+We will use the random forest training method in the `caret` package to create a model from the training data.
+
+Because this can be time-intensive process, the routine below will use parallelization of a multi-core system to distribute the workload, using all available cores (aside from one which is left alone for OS processes).
+
+Once a model is built, it will save it locally to a file named `fit.RData`. Thus, in subsequent runs, that file will be looked for and if detected, loaded into memory rather than running the model building process again.
+
+```{r}
+if (file.exists("fit.RData")) {
+  #Look for locally saved model file and use it if found
+  load(file = "fit.RData")
+} else {
+  #Set parallelization and train a model
+  cluster <- makeCluster(detectCores() - 1)
+  registerDoParallel(cluster)
+  fitControl <- trainControl(method = "cv", number = 10, allowParallel = TRUE)
+  fit <- train(classe ~ ., data=training, method="rf", trControl = fitControl)
+  stopCluster(cluster)
+  
+  #Save the model for use later, rather than retraining each time
+  save(fit, file="fit.RData") 
+}
+```
+
+###Testing the model against the holdback test set
+Now to see how this model holdsup to the `testing` data that was held back.
+```{r}
+predictions <- predict(fit, testing)
+cm <- confusionMatrix(predictions, testing$classe)
+cm
+```
+
+The overall accuracy of `r formatC(cm$overall["Accuracy"] * 100,digits=2, format="f")`%, with a 95% confidence interval of `r formatC(cm$overall["AccuracyLower"] * 100,digits=2, format="f")` - `r formatC(cm$overall["AccuracyUpper"] * 100,digits=2, format="f")`, is not too shabby! For the record, this model correctly predicted all 20 of the Quiz test records.
+
+The top factors in this model are
+```{r}
+varImp(fit)
+```
+

@@ -2,7 +2,7 @@ library(caret)
 library(parallel)
 library(doParallel)
 
-set.seed(84738)
+
 
 #Files were zipped to make GitHub syncronization easier
 unzip("pml-training.zip")
@@ -47,6 +47,7 @@ import_data <- import_data[,-columns_to_exclude]
 
 
 #data splitting
+set.seed(84738)
 inTrain <- createDataPartition(y=import_data$classe, p=0.75, list=FALSE)
 training <- import_data[inTrain,]
 testing <- import_data[-inTrain,]
